@@ -1,0 +1,13 @@
+# Bỏ qua môi trường ảo
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Bỏ qua ảnh chụp cá nhân của Photobooth
+photobooth_photos/
+
+# Bỏ qua file cấu hình của hệ điều hành hoặc IDE
+.DS_Store
+.idea/
+.vscode/

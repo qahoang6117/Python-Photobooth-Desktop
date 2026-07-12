@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Cài đặt các thư viện hệ thống cần thiết cho OpenCV và Tkinter GUI
+# Cài đặt các thư viện hệ thống bắt buộc cho OpenCV và Tkinter GUI chạy trên Linux
 RUN apt-get update && apt-get install -y \
     python3-tk \
     libgl1-mesa-glx \
@@ -9,10 +9,10 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Thay vì đọc file requirements.txt, ta cài đặt trực tiếp luôn để tránh lỗi file trống/lỗi phân quyền trên CI
+RUN pip install --no-cache-dir opencv-python pillow numpy
 
+# Copy toàn bộ source code vào container
 COPY . .
 
-# Lệnh chạy ứng dụng
 CMD ["python", "app.py"]

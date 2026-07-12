@@ -31,12 +31,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    # BỔ SUNG: Khởi tạo môi trường Docker chuẩn cho máy ảo GitHub
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
     
     - name: Build Local Docker Image
       run: |
-        docker build -t photobooth-app:${{ github.sha }} .
-        echo "Build thanh cong image!"
+        docker build -t photobooth-app:latest .

@@ -9,8 +9,16 @@ import numpy as np
 class PhotoboothApp:
     def __init__(self, window):
         self.window = window
-        self.window.title("Python Photobooth v2.0 - Filters")
-        self.window.geometry("950x700")
+        self.window.title("MÁY CHỤP ẢNH TỰ ĐỘNG - PHOTOBOOTH Studio")
+        self.window.geometry("1000x700")
+        self.window.configure(bg="#f0f2f5") # Đổi màu nền sang xám nhẹ hiện đại
+        
+        # Cấu hình style chung cho giao diện hiện đại hơn
+        self.style = ttk.Style()
+        self.style.theme_use('clam')
+        self.style.configure('.', font=('Helvetica', 10), background='#f0f2f5')
+        self.style.configure('TButton', font=('Helvetica', 10, 'bold'), padding=6)
+        self.style.configure('Action.TButton', font=('Helvetica', 12, 'bold'), background='#007bff', foreground='white')
         
         self.output_dir = "photobooth_photos"
         if not os.path.exists(self.output_dir):
@@ -20,57 +28,76 @@ class PhotoboothApp:
         
         self.countdown_value = 0
         self.flash_active = False
-        
-        # Biến quản lý bộ lọc và độ sáng
         self.current_filter = "Mặc định"
-        self.brightness_value = 0 # Từ -100 đến 100
+        self.brightness_value = 0
 
         self.setup_ui()
         self.update_frame()
 
     def setup_ui(self):
-        # Khung chứa Camera (Bên trái)
-        self.left_frame = ttk.Frame(self.window)
-        self.left_frame.pack(side=tk.LEFT, padx=20, pady=20)
+        # 1. TIÊU ĐỀ ỨNG DỤNG (TOP)
+        title_label = tk.Label(self.window, text="✨ KỶ NIỆM PHOTOBOOTH ✨", font=("Helvetica", 18, "bold"), bg="#f0f2f5", fg="#333333")
+        title_label.pack(pady=10)
 
-        self.camera_label = ttk.Label(self.left_frame)
+        # KHUNG CHÍNH CHỨA 2 BÊN (LEFT & RIGHT)
+        main_container = ttk.Frame(self.window)
+        main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
+
+        # 2. KHUNG CHỨA CAMERA (BÊN TRÁI)
+        left_frame = ttk.Frame(main_container, padding=10)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Tạo viền đen bao quanh Camera cho chuyên nghiệp
+        camera_border = tk.Frame(left_frame, bg="#333333", padx=3, pady=3)
+        camera_border.pack()
+
+        self.camera_label = ttk.Label(camera_border)
         self.camera_label.pack()
 
-        # Khung điều khiển và chức năng (Bên phải)
-        self.right_frame = ttk.Frame(self.window)
-        self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=20, pady=20)
+        # 3. KHUNG CHỨA BẢNG ĐIỀU KHIỂN (BÊN PHẢI)
+        right_frame = ttk.Frame(main_container, padding=10, width=320)
+        right_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0))
+        right_frame.pack_propagate(False) # Giữ nguyên độ rộng khung phải
 
-        # Nút Chụp Ảnh
-        self.capture_btn = ttk.Button(self.right_frame, text="📸 CHỤP ẢNH (Space)", command=self.start_countdown)
-        self.capture_btn.pack(pady=10, fill=tk.X, ipady=5)
+        # ---- KHU VỰC CHỤP ẢNH ----
+        self.capture_btn = ttk.Button(right_frame, text="📸 CHỤP ẢNH (Phím Space)", style='Action.TButton', command=self.start_countdown)
+        self.capture_btn.pack(fill=tk.X, ipady=10, pady=(0, 15))
         self.window.bind('<space>', lambda event: self.start_countdown())
 
-        # Khung hiển thị ảnh vừa chụp (Preview thu nhỏ)
-        self.preview_title = ttk.Label(self.right_frame, text="Ảnh vừa chụp:", font=("Arial", 11, "bold"))
-        self.preview_title.pack(pady=5)
-        self.preview_label = ttk.Label(self.right_frame, text="Chưa có ảnh nào")
-        self.preview_label.pack(pady=5)
+        # ---- KHU VỰC BỘ LỌC MÀU ----
+        filter_group = ttk.LabelFrame(right_frame, text=" 🎨 BỘ LỌC HÌNH ẢNH ", padding=10)
+        filter_group.pack(fill=tk.X, pady=(0, 15))
 
-        # ----- KHUNG CHỌN BỘ LỌC MÀU -----
-        filter_frame = ttk.LabelFrame(self.right_frame, text=" BỘ LỌC VÀ CHỈNH SỬA ")
-        filter_frame.pack(pady=15, fill=tk.X, padx=5, ipady=10)
+        # Grid chia các nút bộ lọc thành 2 hàng - 2 cột trực quan
+        grid_frame = ttk.Frame(filter_group)
+        grid_frame.pack(fill=tk.X, pady=5)
 
-        ttk.Label(filter_frame, text="Chọn Filter:", font=("Arial", 10, "bold")).pack(anchor=tk.W, padx=10, pady=5)
-        
-        # Các nút chọn bộ lọc nhanh
-        btn_grid = ttk.Frame(filter_frame)
-        btn_grid.pack(fill=tk.X, padx=10)
+        filters_config = [
+            ("🔄 Mặc định", "Mặc định", 0, 0),
+            ("🌓 Trắng đen", "Trắng đen", 0, 1),
+            ("🍂 Cổ điển", "Cổ điển", 1, 0),
+            ("❄️ Lạnh", "Lạnh", 1, 1)
+        ]
 
-        filters = ["Mặc định", "Trắng đen", "Cổ điển", "Lạnh"]
-        for f in filters:
-            btn = ttk.Button(btn_grid, text=f, command=lambda name=f: self.change_filter(name))
-            btn.pack(side=tk.LEFT, padx=2, expand=True, fill=tk.X)
+        for text, name, r, c in filters_config:
+            btn = ttk.Button(grid_frame, text=text, command=lambda n=name: self.change_filter(n))
+            btn.grid(row=r, column=c, padx=4, pady=4, sticky="nsew")
+            grid_frame.grid_columnconfigure(c, weight=1)
 
-        # Thanh kéo chỉnh độ sáng (Slider)
-        ttk.Label(filter_frame, text="Độ sáng:", font=("Arial", 10, "bold")).pack(anchor=tk.W, padx=10, pady=10)
-        self.bright_slider = ttk.Scale(filter_frame, from_=-60, to=60, orient=tk.HORIZONTAL, command=self.change_brightness)
-        self.bright_slider.set(0) # Mặc định ở giữa
-        self.bright_slider.pack(fill=tk.X, padx=10)
+        # ---- KHU VỰC ĐỘ SÁNG ----
+        brightness_group = ttk.LabelFrame(right_frame, text=" ☀️ ĐỘ SÁNG MÀN HÌNH ", padding=10)
+        brightness_group.pack(fill=tk.X, pady=(0, 15))
+
+        self.bright_slider = ttk.Scale(brightness_group, from_=-60, to=60, orient=tk.HORIZONTAL, command=self.change_brightness)
+        self.bright_slider.set(0)
+        self.bright_slider.pack(fill=tk.X, pady=5)
+
+        # ---- KHU VỰC XEM LẠI ẢNH VỪA CHỤP ----
+        preview_group = ttk.LabelFrame(right_frame, text=" 🖼️ ẢNH VỪA CHỤP MỚI NHẤT ", padding=10)
+        preview_group.pack(fill=tk.BOTH, expand=True)
+
+        self.preview_label = tk.Label(preview_group, text="Chưa chụp tấm nào", fg="#888888", bg="#ffffff", relief=tk.SOLID, bd=1)
+        self.preview_label.pack(fill=tk.BOTH, expand=True, pady=5)
 
     def change_filter(self, name):
         self.current_filter = name
@@ -79,44 +106,31 @@ class PhotoboothApp:
         self.brightness_value = int(float(val))
 
     def apply_effects(self, frame):
-        # 1. Xử lý độ sáng (Brightness)
         if self.brightness_value != 0:
-            # Dùng np.clip để tránh hiện tượng tràn pixel (>255 hoặc <0)
-            frame = np.int16(frame)
-            frame = frame + self.brightness_value
-            frame = np.clip(frame, 0, 255)
-            frame = np.uint8(frame)
+            frame = np.int16(frame) + self.brightness_value
+            frame = np.clip(frame, 0, 255).astype(np.uint8)
 
-        # 2. Xử lý Bộ lọc màu (Filters)
         if self.current_filter == "Trắng đen":
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            frame = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR) # Đưa về lại 3 kênh màu để đồng bộ hiển thị
-        
-        elif self.current_filter == "Cổ điển": # Màu ngả vàng/ấm (Sepia)
+            frame = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+        elif self.current_filter == "Cổ điển":
             kernel = np.array([[0.272, 0.534, 0.131],
                                [0.349, 0.686, 0.168],
                                [0.393, 0.769, 0.189]])
             frame = cv2.transform(frame, kernel)
             frame = np.clip(frame, 0, 255).astype(np.uint8)
-            
-        elif self.current_filter == "Lạnh": # Tăng sắc xanh dương (Cool tone)
-            # Tăng kênh màu B (Blue) và giảm kênh R (Red)
+        elif self.current_filter == "Lạnh":
             B, G, R = cv2.split(frame)
             B = cv2.add(B, 30)
             R = cv2.subtract(R, 10)
             frame = cv2.merge((B, G, R))
-
         return frame
 
     def update_frame(self):
         ret, frame = self.cap.read()
         if ret:
             frame = cv2.flip(frame, 1)
-            
-            # Áp dụng bộ lọc màu và độ sáng đã chọn lên frame hình
             frame = self.apply_effects(frame)
-            
-            # Lưu lại bản có hiệu ứng để tí chụp ảnh lưu xuống máy
             self.current_frame = frame.copy()
 
             if self.flash_active:
@@ -127,9 +141,10 @@ class PhotoboothApp:
                 cv2.putText(frame, str(self.countdown_value), (260, 280), 
                             cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 255, 255), 10, cv2.LINE_AA)
 
-            # Vẽ chữ hiển thị tên Filter đang dùng ở góc camera cho chuyên nghiệp
-            cv2.putText(frame, f"Filter: {self.current_filter}", (15, 35), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
+            # Chỉ báo filter đang bật hiển thị tinh tế ở góc trên bên trái
+            cv2.rectangle(frame, (5, 5), (170, 35), (50, 50, 50), -1)
+            cv2.putText(frame, f"Cam: {self.current_filter}", (12, 26), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
 
             cv2_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(cv2_image)
@@ -156,18 +171,18 @@ class PhotoboothApp:
         if hasattr(self, 'current_frame'):
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             filename = os.path.join(self.output_dir, f"photo_{timestamp}.jpg")
-            
-            # Lưu ảnh gốc đã qua bộ lọc màu thành công
             cv2.imwrite(filename, self.current_frame)
 
-            # Hiển thị ảnh vừa chụp ra preview
+            # Render ảnh thu nhỏ vào khung Preview trắng thanh lịch ở góc phải
             preview_img = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(preview_img)
-            img.thumbnail((180, 180))
+            
+            # Tính toán kích thước fit vừa vặn khung hiển thị bên phải mà không méo ảnh
+            img.thumbnail((260, 220))
             imgtk = ImageTk.PhotoImage(image=img)
             
             self.preview_label.imgtk = imgtk
-            self.preview_label.configure(image=imgtk)
+            self.preview_label.configure(image=imgtk, text="") # Xóa chữ mặc định đi khi có ảnh
 
     def __del__(self):
         if self.cap.isOpened():

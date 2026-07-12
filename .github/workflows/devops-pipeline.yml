@@ -1,0 +1,42 @@
+name: DevOps CI/CD Pipeline
+
+# Kích hoạt pipeline mỗi khi có hành động push code lên nhánh main
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  # LÀM NHIỆM VỤ 1: Kiểm tra chất lượng và cú pháp code Python
+  code-quality-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install Linting Tool
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8
+        
+    - name: Check Python Syntax with flake8
+      run: |
+        # Dừng pipeline nếu phát hiện lỗi cú pháp nghiêm trọng
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+  # LÀM NHIỆM VỤ 2: Thử nghiệm Build Docker Image sau khi code đã sạch lỗi
+  build-docker-image:
+    needs: code-quality-test # Chỉ chạy khi nhiệm vụ 1 thành công
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Build Local Docker Image
+      run: |
+        docker build -t photobooth-app:${{ github.sha }} .
+        echo "Build thành công image với tag duy nhất định danh theo commit!"
